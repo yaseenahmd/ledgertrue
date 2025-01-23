@@ -1,0 +1,35 @@
+
+# Ignore Python bytecode files
+__pycache__/
+*.pyc
+*.pyo
+
+Lib/
+
+# Ignore pytest cache
+.pytest_cache/
+
+# Ignore environment variables files
+.env
+
+# Ignore other system-specific files
+.DS_Store
+
+
+# Ignore node modules
+node_modules/
+
+# Ignore build artifacts
+/dist
+/build
+
+# Ignore environment variable files
+.env
+
+# Ignore IDE-specific files (e.g., VS Code, PyCharm)
+.vscode/
+.idea/
+
+# Ignore system-specific files
+.DS_Store
+Thumbs.db
