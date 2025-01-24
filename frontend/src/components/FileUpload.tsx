@@ -1,49 +1,88 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import * as XLSX from 'xlsx';
 
-// Add a spinner component or import a spinner library if needed
+// Spinner Component
 const Spinner = () => (
-  <div className="loader">Loading...</div>
+  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900 dark:border-gray-100"></div>
 );
 
 const FileUpload: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) setFile(file);
+    const selectedFile = e.target.files?.[0];
+    
+    if (selectedFile) {
+      // Validate file type
+      if (!['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'].includes(selectedFile.type)) {
+        setError('Please upload a valid Excel file (.xlsx, .xls)');
+        setFile(null);
+        return;
+      }
+
+      setFile(selectedFile);
+      setError(null);
+    }
   };
 
   const handleUpload = async () => {
-    if (!file) return alert('Please select a file.');
+    if (!file) {
+      setError('Please select a file.');
+      return;
+    }
+
     setIsLoading(true);
+    setError(null);
 
     const formData = new FormData();
     formData.append('file', file);
 
     try {
-      const res = await axios.post('http://localhost:8000/api/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        responseType: 'blob',
+      // Perform Excel parsing (optional, before backend upload)
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const workbook = XLSX.read(e.target?.result, { type: 'binary' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const data = XLSX.utils.sheet_to_json(worksheet);
+
+          // Optional: You can log or validate data before upload
+          console.log('Parsed Excel Data:', data);
+        } catch (parseError) {
+          console.error('Excel parsing error:', parseError);
+        }
+      };
+      reader.readAsBinaryString(file);
+
+      // Backend upload using fetch
+      const response = await fetch('http://localhost:8000/api/upload', {
+        method: 'POST',
+        body: formData
       });
 
-      const pdfBlob = new Blob([res.data], { type: 'application/pdf' });
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const pdfBlob = await response.blob();
       const pdfUrl = URL.createObjectURL(pdfBlob);
       setPdfUrl(pdfUrl);
     } catch (error) {
       console.error('Error uploading file:', error);
-      alert('An error occurred while processing the file.');
+      setError('An error occurred while processing the file.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-6">
-      <div className="bg-white bg-opacity-20 backdrop-blur-lg rounded-3xl p-8 shadow-lg max-w-lg w-full">
-        <h1 className="text-4xl font-extrabold text-center text-white mb-6">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+      <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-8 w-full max-w-md">
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">
           Generate Anomaly Detection Report
         </h1>
 
@@ -52,9 +91,9 @@ const FileUpload: React.FC = () => {
           <div className="flex flex-col items-center w-full">
             <label
               htmlFor="fileInput"
-              className="w-full flex items-center justify-center px-6 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg cursor-pointer hover:scale-105 transform transition duration-300 hover:bg-gradient-to-r hover:from-blue-700 hover:to-purple-700"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg cursor-pointer transition duration-300"
             >
-              {file ? file.name : 'Choose a File'}
+              {file ? file.name : 'Choose Excel File'}
             </label>
             <input
               type="file"
@@ -65,14 +104,19 @@ const FileUpload: React.FC = () => {
             />
           </div>
 
+          {/* Error Message */}
+          {error && (
+            <div className="w-full text-center text-red-500 text-sm">
+              {error}
+            </div>
+          )}
+
           {/* Upload Button */}
           <button
             onClick={handleUpload}
-            disabled={isLoading}
-            className={`w-full px-6 py-4 text-white font-semibold rounded-xl transition duration-300 shadow-lg transform hover:scale-105 focus:outline-none ${
-              isLoading
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600'
+            disabled={isLoading || !file}
+            className={`w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ${
+              isLoading || !file ? 'opacity-50 cursor-not-allowed' : ''
             }`}
           >
             {isLoading ? <Spinner /> : 'Upload and Generate Report'}
@@ -81,13 +125,13 @@ const FileUpload: React.FC = () => {
           {/* Download Section */}
           {pdfUrl && (
             <div className="mt-6 text-center">
-              <h3 className="text-xl font-semibold text-white mb-4">
+              <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">
                 Report Generated Successfully!
               </h3>
               <a
                 href={pdfUrl}
                 download="anomaly_detection_report.pdf"
-                className="inline-block px-6 py-3 bg-gradient-to-r from-green-500 to-teal-500 text-white font-semibold rounded-xl hover:from-green-600 hover:to-teal-600 transform hover:scale-105 transition duration-300 shadow-lg"
+                className="inline-block bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300"
               >
                 Download PDF Report
               </a>

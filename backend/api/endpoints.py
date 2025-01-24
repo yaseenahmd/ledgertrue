@@ -35,4 +35,5 @@ async def upload_file(file: UploadFile = File(...)):
         return FileResponse(pdf_path, filename="anomaly_detection_report.pdf", media_type="application/pdf")
     
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        print("Error in upload_file:", e)  # Add logging
+        raise HTTPException(status_code=400, detail=f"Error processing file: {str(e)}")

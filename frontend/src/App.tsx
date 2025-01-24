@@ -1,5 +1,5 @@
 import React from 'react';
-import FileUpload from './components/fileupload'; // Check if this path is correct
+import FileUpload from './components/FileUpload'; // Check if this path is correct
 
 const App: React.FC = () => {
   return (

@@ -1,0 +1,2 @@
+# config.py
+DEEPSEEK_API_KEY = "sk-011ab99541b94b1fbf4c362c8e851103"
